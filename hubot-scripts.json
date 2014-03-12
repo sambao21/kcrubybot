@@ -1,4 +1,5 @@
 ["redis-brain.coffee",
  "shipit.coffee",
  "karma.coffee",
- "dribbble.coffee"]
+ "dribbble.coffee",
+ "emoji.coffee"]
