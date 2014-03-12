@@ -3,4 +3,5 @@
  "karma.coffee",
  "dribbble.coffee",
  "emoji.coffee",
- "gemwhois.coffee"]
+ "gemwhois.coffee",
+ "github-activity.coffee"]
