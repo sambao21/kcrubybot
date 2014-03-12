@@ -4,8 +4,6 @@
 # Dependencies:
 #   "redis": ">=0.7.2"
 #   "moment": ">=1.7.0"
-#   "connect": ">=2.4.5"
-#   "connect_router": "*"
 #
 # Configuration:
 #   LOG_REDIS_URL: URL to Redis backend to use for logging (uses REDISTOGO_URL
@@ -27,8 +25,8 @@
 #   i request the cone of silence - stop logging for the next 15 minutes
 #
 # Notes:
-#   This script by default starts a Connect server on 8081 with the following routes:
-#     /
+#   This script exposes following http routes:
+#     /logs
 #       Form that takes a room ID and two UNIX timestamps to show the logs between.
 #       Action is a GET with room, start, and end parameters to /logs/view.
 #
@@ -57,8 +55,6 @@
 Redis = require "redis"
 Url   = require "url"
 Util  = require "util"
-Connect = require "connect"
-Connect.router = require "connect_router"
 OS = require "os"
 moment = require "moment"
 hubot = require "hubot"
@@ -110,72 +106,73 @@ module.exports = (robot) ->
   ## HTTP interface ##
   ####################
 
-  connect = Connect()
-  connect.use Connect.basicAuth(process.env.LOG_HTTP_USER || 'logs', process.env.LOG_HTTP_PASS || 'changeme')
-  connect.use Connect.bodyParser()
-  connect.use Connect.query()
-  connect.use Connect.router (app) ->
-    app.get '/', (req, res) ->
-      res.statusCode = 200
-      res.setHeader 'Content-Type', 'text/html'
-      res.end views.index
+  robot.router.get '/logs', (req, res) ->
+    res.statusCode = 200
+    res.setHeader 'Content-Type', 'text/html'
+    res.end views.index
 
-    app.get '/logs/view', (req, res) ->
-      res.statusCode = 200
-      res.setHeader 'Content-Type', 'text/html'
-      if not (req.query.start && req.query.end)
-        res.end '<strong>No start or end date provided</strong>'
-      m_start = parseInt(req.query.start)
-      m_end   = parseInt(req.query.end)
-      if isNaN(m_start) or isNaN(m_end)
-        res.end "Invalid range"
-        return
-      m_start = moment.unix m_start
-      m_end   = moment.unix m_end
-      room = req.query.room || 'general'
-      presence = !!req.query.presence
-      get_logs_for_range client, m_start, m_end, room, (replies) ->
-        res.write views.log_view.head
-        res.write format_logs_for_html(replies, presence).join("\r\n")
-        res.end views.log_view.tail
-
-    app.get '/logs/:room', (req, res) ->
-      res.statusCode = 200
-      res.setHeader 'Content-Type', 'text/html'
+  robot.router.get '/logs/view', (req, res) ->
+    res.statusCode = 200
+    res.setHeader 'Content-Type', 'text/html'
+    if not (req.query.start && req.query.end)
+      res.end '<strong>No start or end date provided</strong>'
+    m_start = parseInt(req.query.start)
+    m_end   = parseInt(req.query.end)
+    if isNaN(m_start) or isNaN(m_end)
+      res.end "Invalid range"
+      return
+    m_start = moment.unix m_start
+    m_end   = moment.unix m_end
+    room = req.query.room || 'general'
+    if room.indexOf('#') != 0
+      room = '#' + room
+    presence = !!req.query.presence
+    get_logs_for_range client, m_start, m_end, room, (replies) ->
       res.write views.log_view.head
-      res.write "<h2>Logs for #{req.params.room}</h2>\r\n"
-      res.write "<ul>\r\n"
+      res.write format_logs_for_html(replies, presence).join("\r\n")
+      res.end views.log_view.tail
 
-      # This is a bit of a hack... KEYS takes O(n) time
-      # and shouldn't be used for this, but it's not worth
-      # creating a set just so that we can list all logs
-      # for a room.
-      client.keys "logs:#{req.params.room}:*", (err, replies) ->
-        days = []
-        for key in replies
-          key = key.slice key.lastIndexOf(':')+1, key.length
-          days.push moment(key, "YYYYMMDD")
-        days.sort (a, b) ->
-            return b.diff(a)
-        days.forEach (date) ->
-          res.write "<li><a href=\"/logs/#{req.params.room}/#{date.format('YYYYMMDD')}\">#{date.format('dddd, MMMM Do YYYY')}</a></li>\r\n"
-        res.write "</ul>"
-        res.end views.log_view.tail
+  robot.router.get '/logs/:room', (req, res) ->
+    room = req.params.room
+    if room.indexOf('#') != 0
+      room = '#' + room
+    res.statusCode = 200
+    res.setHeader 'Content-Type', 'text/html'
+    res.write views.log_view.head
+    res.write "<h2>Logs for #{room}</h2>\r\n"
+    res.write "<ul>\r\n"
 
-    app.get '/logs/:room/:id', (req, res) ->
-      res.statusCode = 200
-      res.setHeader 'Content-Type', 'text/html'
-      presence = !!req.query.presence
-      id = parseInt req.params.id
-      if isNaN(id)
-        res.end "Bad log ID"
-        return
-      get_log client, req.params.room, id, (logs) ->
-        res.write views.log_view.head
-        res.write format_logs_for_html(logs, presence).join("\r\n")
-        res.end views.log_view.tail
+    # This is a bit of a hack... KEYS takes O(n) time
+    # and shouldn't be used for this, but it's not worth
+    # creating a set just so that we can list all logs
+    # for a room.
+    client.keys "logs:#{room}:*", (err, replies) ->
+      days = []
+      for key in replies
+        key = key.slice key.lastIndexOf(':')+1, key.length
+        days.push moment(key, "YYYYMMDD")
+      days.sort (a, b) ->
+          return b.diff(a)
+      days.forEach (date) ->
+        res.write "<li><a href=\"/logs/#{req.params.room}/#{date.format('YYYYMMDD')}\">#{date.format('dddd, MMMM Do YYYY')}</a></li>\r\n"
+      res.write "</ul>"
+      res.end views.log_view.tail
 
-  robot.log_server = connect.listen process.env.LOG_HTTP_PORT || 8081
+  robot.router.get '/logs/:room/:id', (req, res) ->
+    room = req.params.room
+    if room.indexOf('#') != 0
+      room = '#' + room
+    res.statusCode = 200
+    res.setHeader 'Content-Type', 'text/html'
+    presence = !!req.query.presence
+    id = parseInt req.params.id
+    if isNaN(id)
+      res.end "Bad log ID"
+      return
+    get_log client, room, id, (logs) ->
+      res.write views.log_view.head
+      res.write format_logs_for_html(logs, presence).join("\r\n")
+      res.end views.log_view.tail
 
   ####################
   ## Chat interface ##
