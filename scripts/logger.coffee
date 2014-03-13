@@ -10,7 +10,6 @@
 #                  if unset, and localhost:6379 if that is unset.
 #   LOG_HTTP_USER: username for viewing logs over HTTP (default 'logs' if unset)
 #   LOG_HTTP_PASS: password for viewing logs over HTTP (default 'changeme' if unset)
-#   LOG_HTTP_PORT: port for our logging Connect server to listen on (default 8081)
 #   LOG_STEALTH:   If set, bot will not announce that it is logging in chat
 #   LOG_MESSAGES_ONLY: If set, bot will not log room enter or leave events
 #
@@ -189,7 +188,7 @@ module.exports = (robot) ->
       return
     if robot.brain.data.logging[room].enabled and not robot.logging[room].notified
       msg.send "I'm logging messages in #{room} at " +
-                 "http://#{OS.hostname()}:#{process.env.LOG_HTTP_PORT || 8081}/" +
+                 "http://#{OS.hostname()}}/" +
                  "logs/#{encodeURIComponent(room)}/#{date_id()}\n" +
                  "Say `#{robot.name} stop logging forever' to disable logging indefinitely."
       robot.logging[room].notified = true
@@ -439,7 +438,7 @@ enable_logging = (robot, redis, response) ->
   # Fall back to user name if no room, or "Unknown"
   room = response.message.user.room || response.message.user.name || response.message.user.id || "Unknown"
   response.reply "I will log messages in #{room} at " +
-                 "http://#{OS.hostname()}:#{process.env.LOG_HTTP_PORT || 8081}/" +
+                 "http://#{OS.hostname()}}/" +
                  "logs/#{encodeURIComponent(room)}/#{date_id()} from now on.\n" +
                  "Say `#{robot.name} stop logging forever' to disable logging indefinitely."
   robot.brain.save()
