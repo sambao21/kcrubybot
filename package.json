@@ -26,8 +26,7 @@
     "redis": ">=0.7.2",
     "moment": ">=1.7.0",
     "date-utils": ">=1.2.5",
-    "githubot": ">=0.4.0",
-    "scraper": "0.0.9"
+    "githubot": ">=0.4.0"
   },
   "engines": {
     "node": ">= 0.8.x",
