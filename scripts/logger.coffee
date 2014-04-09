@@ -228,14 +228,14 @@ module.exports = (robot) ->
         return
 
       logs_formatted = format_logs_for_chat(logs)
-      robot.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
+      robot.adapter.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
 
   robot.respond /what did I miss\??$/i, (msg) ->
     now = moment()
     before = moment().subtract('m', 10)
     get_logs_for_range client, before, now, msg.message.user.room, (logs) ->
       logs_formatted = format_logs_for_chat(logs)
-      robot.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
+      robot.adapter.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
 
   robot.respond /what did I miss in the [pl]ast ([0-9]+) (seconds?|minutes?|hours?)\??/i, (msg) ->
     num = parseInt(msg.match[1])
@@ -246,13 +246,13 @@ module.exports = (robot) ->
     start = moment().subtract(msg.match[2][0], num)
 
     if now.diff(start, 'days', true) > 1
-      robot.sendPrivate direct_user(msg.message.user.id, msg.message.user.room),
+      robot.adapter.sendPrivate direct_user(msg.message.user.id, msg.message.user.room),
                  "I can only tell you activity for the last 24 hours in a message."
       start = now.sod().subtract('d', 1)
 
     get_logs_for_range client, start, moment(), msg.message.user.room, (logs) ->
       logs_formatted = format_logs_for_chat(logs)
-      robot.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
+      robot.adapter.sendPrivate direct_user(msg.message.user.id, msg.message.user.room), logs_formatted.join("\n")
 
 
 ####################
